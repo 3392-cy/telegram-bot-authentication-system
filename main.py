@@ -2,8 +2,11 @@ import json
 import time
 import uuid
 import datetime
+import telebot
 from admin import ADMINID, ADMINTOKEN, TOKFILE, TOKDUR
 autho_users = {}
+token = ADMINTOKEN
+bot = telebot.TeleBot(token)
 def authusers():
     tokens = loadtok()
     for _, data in tokens["used"].items():
@@ -80,3 +83,32 @@ def accesschck(user_id):
                 autho_users[user_id] = True
                 return True
     return False
+
+@bot.message_handler(commands=["start"])
+def start(message):
+    if accesschck(message.from_user.id):
+        bot.reply_to(message, "✅ Access granted!\nPlease send /menu to see all available services. Enjoy!!! @gqpgqpg")
+    else:
+        bot.reply_to(message, "🔒 You need a valid access token\nIf you don't have one or it got expired, lmk @gqpgqpg.\nIf you got one send /activate")
+
+@bot.message_handler(commands=["activate"])
+def activate(message):
+	msg = bot.reply_to(message, "Send your activation token")
+	bot.register_next_step_handler(msg, chkr)
+def chkr(message):
+	token = message.text
+	success, msg = validtok(token, message.from_user.id)
+	bot.reply_to(message, msg)
+
+@bot.message_handler(commands=["gentoken"])
+def gentoken(message):
+    if message.from_user.id != ADMINID:
+        return bot.reply_to(message, "❌ Admin only. To get a token contact @gqpgqpg")
+    msg = bot.reply_to(message, "Send duration type (7days, 30days, lifetime)")
+    bot.register_next_step_handler(msg, process_token)
+def process_token(message):
+    duration = message.text
+    token = gentok(duration)
+    bot.reply_to(message, f"✅ Token generated: {token} ({duration})")
+
+bot.polling()
